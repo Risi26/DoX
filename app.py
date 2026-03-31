@@ -1,201 +1,282 @@
-# ============================================================
-#   ⚡ DOX — Main App
-#   Built by Risi Nigarish | King of Technology 👑
-# ============================================================
-
+# ---------------- BLOCK 1 — IMPORTS ----------------
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
+import seaborn as sns
 import numpy as np
 
-# ────────────────────────────────────────────────────────────
-# STEP 1 — PAGE CONFIGURATION
-# ────────────────────────────────────────────────────────────
+matplotlib.use("Agg")
+
+# ---------------- BLOCK 2 — PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="Dox ⚡",
-    page_icon="⚡",
+    page_title="DOX v2 🍇",
+    page_icon="🍇",
     layout="wide"
 )
 
-# ────────────────────────────────────────────────────────────
-# STEP 2 — TITLE & DESCRIPTION
-# ────────────────────────────────────────────────────────────
-st.title("⚡ Dox")
-st.markdown("**Unlock the power of your dataset**")
+# ---------------- BLOCK 3 — TITLE ----------------
+col_title, col_badge = st.columns([5, 1])
+
+with col_title:
+    st.title("🍇 DOX — Data Exploration System")
+    st.markdown("*Unlock the power of your dataset — like a Devil Fruit*")
+
+with col_badge:
+    st.markdown("""
+    <div style='background:#7c3aed; color:white; padding:0.4rem 0.8rem;
+    border-radius:8px; text-align:center; margin-top:1rem; font-weight:700;'>
+        v2.0
+    </div>
+    """, unsafe_allow_html=True)
+
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 3 — FILE UPLOAD (Input Module)
-# ────────────────────────────────────────────────────────────
+# ---------------- BLOCK 4 — SIDEBAR ----------------
 st.sidebar.header("📂 Upload Your Dataset")
+st.sidebar.markdown("Supported formats: **CSV, Excel, JSON**")
+
 uploaded_file = st.sidebar.file_uploader(
-    "Choose a CSV file",
-    type=["csv"]
+    "Choose a file",
+    type=["csv", "xlsx", "xls", "json"]
 )
 
-# If no file is uploaded, show a message and stop
 if uploaded_file is None:
-    st.info("👈 Upload a CSV file from the sidebar to get started.")
+    st.info("👈 Upload a dataset from the sidebar to get started.")
     st.stop()
 
-# ────────────────────────────────────────────────────────────
-# STEP 4 — LOAD DATA (Data Processing Module)
-# ────────────────────────────────────────────────────────────
-df = pd.read_csv(uploaded_file)
+# ---------------- BLOCK 5 — FILE LOADING ----------------
+file_type = uploaded_file.name.split('.')[-1].lower()
 
-st.success(f"✅ File uploaded successfully: **{uploaded_file.name}**")
+try:
+    if file_type == "csv":
+        df = pd.read_csv(uploaded_file)
+        format_label = "CSV"
+
+    elif file_type in ["xlsx", "xls"]:
+        df = pd.read_excel(uploaded_file)
+        format_label = "Excel"
+
+    elif file_type == "json":
+        df = pd.read_json(uploaded_file)
+        format_label = "JSON"
+
+    else:
+        st.error("❌ Unsupported file type.")
+        st.stop()
+
+except Exception as e:
+    st.error(f"❌ Error loading file: {e}")
+    st.stop()
+
+st.success(f"✅ {format_label} file loaded: **{uploaded_file.name}**")
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 5 — DATASET OVERVIEW (Structure Analysis)
-# ────────────────────────────────────────────────────────────
+numeric_cols = df.select_dtypes(include="number").columns.tolist()
+cat_cols     = df.select_dtypes(include="object").columns.tolist()
+
+# ---------------- BLOCK 6 — DATASET OVERVIEW ----------------
 st.header("📊 Dataset Overview")
 
-col1, col2, col3, col4 = st.columns(4)
-
-col1.metric("Total Rows", df.shape[0])
-col2.metric("Total Columns", df.shape[1])
-col3.metric("Numeric Columns", len(df.select_dtypes(include="number").columns))
-col4.metric("Categorical Columns", len(df.select_dtypes(include="object").columns))
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Total Rows", df.shape[0])
+c2.metric("Total Columns", df.shape[1])
+c3.metric("Numeric Columns", len(numeric_cols))
+c4.metric("Categorical Columns", len(cat_cols))
+c5.metric("Total Missing", int(df.isnull().sum().sum()))
 
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 6 — DATA PREVIEW
-# ────────────────────────────────────────────────────────────
+# ---------------- BLOCK 7 — DATA PREVIEW ----------------
 st.header("🔍 Data Preview")
-st.markdown("First 5 rows of your dataset:")
-st.dataframe(df.head())
-
+st.dataframe(df.head(10), use_container_width=True)
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 7 — COLUMN INFO (Data Types)
-# ────────────────────────────────────────────────────────────
+# ---------------- BLOCK 8 — COLUMN INFORMATION ----------------
 st.header("🗂️ Column Information")
 
+missing_counts = df.isnull().sum()
+
 col_info = pd.DataFrame({
-    "Column Name"    : df.columns,
-    "Data Type"      : df.dtypes.values,
-    "Missing Values" : df.isnull().sum().values,
-    "Unique Values"  : df.nunique().values
+    "Column Name": df.columns,
+    "Data Type": df.dtypes.values,
+    "Missing Values": missing_counts.values,
+    "Missing %": (missing_counts.values / len(df) * 100).round(2),
+    "Unique Values": df.nunique().values
 })
 
 st.dataframe(col_info, use_container_width=True)
-
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 8 — MISSING VALUES ANALYSIS
-# ────────────────────────────────────────────────────────────
-st.header("🚨 Missing Values")
+# ---------------- BLOCK 9 — MISSING VALUES ----------------
+st.header("🚨 Missing Values Analysis")
 
-total_missing = df.isnull().sum().sum()
+total_missing = missing_counts.sum()
 
 if total_missing == 0:
-    st.success("✅ No missing values found! Your dataset is clean.")
+    st.success("✅ No missing values found!")
 else:
-    st.warning(f"⚠️ Total missing values found: {total_missing}")
-
-    missing_data = df.isnull().sum()
-    missing_data = missing_data[missing_data > 0]
+    st.warning(f"⚠️ Total missing values: {total_missing}")
 
     missing_df = pd.DataFrame({
-        "Column"         : missing_data.index,
-        "Missing Count"  : missing_data.values,
-        "Missing %"      : round(missing_data.values / len(df) * 100, 2)
+        "Column": missing_counts[missing_counts > 0].index,
+        "Missing Count": missing_counts[missing_counts > 0].values,
+        "Missing %": (missing_counts[missing_counts > 0].values / len(df) * 100).round(2)
     })
 
     st.dataframe(missing_df, use_container_width=True)
 
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 9 — STATISTICAL SUMMARY
-# ────────────────────────────────────────────────────────────
+# ---------------- BLOCK 10 — STATISTICAL SUMMARY ----------------
 st.header("📈 Statistical Summary")
-st.markdown("Mean, Median, Std, Min, Max — all numeric columns:")
-
-numeric_cols = df.select_dtypes(include="number").columns.tolist()
 
 if len(numeric_cols) == 0:
-    st.info("No numeric columns found in this dataset.")
+    st.info("No numeric columns found.")
 else:
     st.dataframe(df[numeric_cols].describe().round(2), use_container_width=True)
 
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 10 — VISUALIZATION — HISTOGRAM (Distribution)
-# ────────────────────────────────────────────────────────────
-st.header("📊 Distribution — Histogram")
+# ---------------- BLOCK 11 — OUTLIER DETECTION ----------------
+st.header("🔍 Outlier Detection — IQR Method")
 
 if len(numeric_cols) == 0:
-    st.info("No numeric columns available for histogram.")
+    st.info("No numeric columns available.")
 else:
-    selected_col = st.selectbox("Select a column to visualize:", numeric_cols)
+    outlier_col = st.selectbox("Select column:", numeric_cols)
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    col_data = df[outlier_col].dropna()
 
-    data = df[selected_col].dropna()
+    Q1 = col_data.quantile(0.25)
+    Q3 = col_data.quantile(0.75)
+    IQR = Q3 - Q1
 
-    ax.hist(data, bins=30, color="purple", edgecolor="black", alpha=0.7)
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
 
-    # Mean line
-    ax.axvline(data.mean(),   color="red",    linestyle="--", linewidth=2, label=f"Mean   : {data.mean():.2f}")
+    outliers = col_data[(col_data < lower) | (col_data > upper)]
 
-    # Median line
-    ax.axvline(data.median(), color="orange", linestyle="--", linewidth=2, label=f"Median : {data.median():.2f}")
+    st.metric("Outliers Found", len(outliers))
+    st.write(f"Lower: {round(lower,2)} | Upper: {round(upper,2)}")
 
-    ax.set_title(f"Distribution of '{selected_col}'")
-    ax.set_xlabel(selected_col)
-    ax.set_ylabel("Frequency")
-    ax.legend()
-
+    fig, ax = plt.subplots()
+    ax.boxplot(col_data, vert=False)
     st.pyplot(fig)
     plt.close()
 
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 11 — VISUALIZATION — BAR CHART (Categorical)
-# ────────────────────────────────────────────────────────────
-st.header("🏷️ Categorical Column — Bar Chart")
+# ---------------- BLOCK 12 — CORRELATION HEATMAP (FINAL FIXED) ----------------
+st.header("🔥 Correlation Heatmap")
 
-cat_cols = df.select_dtypes(include="object").columns.tolist()
-
-if len(cat_cols) == 0:
-    st.info("No categorical columns found in this dataset.")
+if len(numeric_cols) < 2:
+    st.info("Need at least 2 numeric columns.")
 else:
-    selected_cat = st.selectbox("Select a categorical column:", cat_cols)
+    corr = df[numeric_cols].corr().round(2)
 
-    value_counts = df[selected_cat].value_counts().head(10)
+    # Controls
+    show_annot = st.checkbox("Show correlation values", value=True)
+    threshold = st.slider("Correlation strength filter:", 0.0, 1.0, 0.5)
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # Dynamic sizing based on number of columns
+    size = len(corr.columns)
+    fig_size = max(6, size * 0.6)
 
-    ax.bar(
-        value_counts.index.astype(str),
-        value_counts.values,
-        color="mediumslateblue",
-        edgecolor="black"
+    fig, ax = plt.subplots(figsize=(fig_size, fig_size))
+
+    # Adjust font size dynamically
+    font_size = max(6, 12 - size * 0.3)
+
+    sns.heatmap(
+        corr,
+        annot=show_annot,
+        fmt=".2f",
+        cmap="coolwarm",
+        center=0,
+        linewidths=0.5,
+        cbar=True,
+        annot_kws={"size": font_size},
+        ax=ax
     )
 
-    ax.set_title(f"Top values in '{selected_cat}'")
-    ax.set_xlabel(selected_cat)
-    ax.set_ylabel("Count")
+    ax.set_title("Correlation Matrix", fontsize=14)
     plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
 
+    st.pyplot(fig)
+    plt.close()
+    
+
+    # ---------------- TOP CORRELATIONS ----------------
+    st.subheader("🔝 Strong Correlations")
+
+    corr_pairs = (
+        corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+        .stack()
+        .reset_index()
+    )
+
+    corr_pairs.columns = ["Column A", "Column B", "Correlation"]
+
+    strong_corr = corr_pairs[abs(corr_pairs["Correlation"]) >= threshold]
+
+    if strong_corr.empty:
+        st.info("No strong correlations found.")
+    else:
+        strong_corr = strong_corr.sort_values(by="Correlation", key=abs, ascending=False)
+        st.dataframe(strong_corr, use_container_width=True)
+
+st.divider()
+# ---------------- BLOCK 13 — HISTOGRAM ----------------
+st.header("📊 Histogram")
+
+if len(numeric_cols) > 0:
+    col = st.selectbox("Select column:", numeric_cols, key="hist")
+
+    fig, ax = plt.subplots()
+    ax.hist(df[col].dropna(), bins=30)
     st.pyplot(fig)
     plt.close()
 
 st.divider()
 
-# ────────────────────────────────────────────────────────────
-# STEP 12 — FOOTER
-# ────────────────────────────────────────────────────────────
+# ---------------- BLOCK 14 — BAR CHART (FIXED) ----------------
+st.header("🏷️ Bar Chart")
+
+all_cols = df.columns.tolist()
+bar_col = st.selectbox("Select column for bar chart:", all_cols)
+
+data = df[bar_col].dropna()
+
+if pd.api.types.is_numeric_dtype(data):
+    bins = st.slider("Select number of bins:", 5, 50, 10)
+    data = pd.cut(data, bins=bins)
+    value_counts = data.value_counts().sort_index()
+else:
+    value_counts = data.value_counts().head(10)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+fig.patch.set_facecolor("#0f0f1a")
+ax.set_facecolor("#0f0f1a")
+
+ax.bar(value_counts.index.astype(str), value_counts.values,
+       color="#7c3aed", edgecolor="#1e1b4b")
+
+ax.set_title(f"Bar Chart of '{bar_col}'", color="white")
+ax.tick_params(colors="#94a3b8")
+
+plt.xticks(rotation=45, ha="right")
+
+st.pyplot(fig)
+plt.close()
+
+st.divider()
+
+# ---------------- BLOCK 15 — FOOTER ----------------
 st.markdown(
     "<div style='text-align:center; color:gray;'>"
-    "⚡ Dox &nbsp;|&nbsp; Built by <strong>Risi Nigarish</strong>"
+    "🍇 DOX v2.0 | Built by <b>Risi Nigarish</b> 👑"
     "</div>",
     unsafe_allow_html=True
 )
