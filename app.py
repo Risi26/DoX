@@ -1,4 +1,6 @@
 # ---------------- BLOCK 1 — IMPORTS ----------------
+from utils.cleaning import run_cleaning_pipeline
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,7 +28,7 @@ with col_badge:
     st.markdown("""
     <div style='background:#7c3aed; color:white; padding:0.4rem 0.8rem;
     border-radius:8px; text-align:center; margin-top:1rem; font-weight:700;'>
-        v2.0
+        v2.1
     </div>
     """, unsafe_allow_html=True)
 
@@ -34,7 +36,6 @@ st.divider()
 
 # ---------------- BLOCK 4 — SIDEBAR ----------------
 st.sidebar.header("📂 Upload Your Dataset")
-st.sidebar.markdown("Supported formats: **CSV, Excel, JSON**")
 
 uploaded_file = st.sidebar.file_uploader(
     "Choose a file",
@@ -92,6 +93,122 @@ st.header("🔍 Data Preview")
 st.dataframe(df.head(10), use_container_width=True)
 st.divider()
 
+# ---------------- BLOCK 7.5 — ADVANCED DATA CLEANING (FIXED & EXPORT READY) ----------------
+st.header("⚙️ Block 1 — Advanced Data Cleaning")
+
+st.markdown(
+    "This module intelligently detects outliers using statistical methods and allows "
+    "safe removal without damaging your dataset."
+)
+
+# 🔥 Initialize session state to remember if the pipeline was run
+if "pipeline_run" not in st.session_state:
+    st.session_state.pipeline_run = False
+
+# ---------------- RUN PIPELINE ----------------
+if st.button("🚀 Run Cleaning Pipeline"):
+    st.session_state.pipeline_run = True
+
+# Only display results and the removal button IF the pipeline was triggered
+if st.session_state.pipeline_run:
+
+    # Run backend function
+    results = run_cleaning_pipeline(
+        df,
+        outlier_tolerance=2,   # Matches updated utils/cleaning.py
+        apply_removal=False    # Detect only first
+    )
+
+    cleaned_df = results["cleaned_df"]
+    outlier_summary = results["outlier_summary"]
+    row_counts = results["row_outlier_counts"]
+    skewness_report = results["skewness_report"]
+
+    # ---------------- METRICS (Gemini UI) ----------------
+    total_rows = len(df)
+    affected_rows = (row_counts > 0).sum()
+    affected_pct = (affected_rows / total_rows) * 100 if total_rows > 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Rows", total_rows)
+    col2.metric("Rows with Outliers", affected_rows)
+    col3.metric("Data Affected", f"{affected_pct:.1f}%")
+
+    # ---------------- WARNINGS ----------------
+    if affected_rows == 0:
+        st.success("🎉 No outliers detected! Your data is clean.")
+    elif affected_pct > 15:
+        st.warning(
+            f"⚠️ {affected_pct:.1f}% of rows contain outliers. "
+            "Be careful when removing data — it may affect results."
+        )
+    else:
+        st.info("💡 Review the breakdown before removing outliers.")
+
+    # ---------------- DETAILS (Gemini Style) ----------------
+    with st.expander("📊 View Detailed Analysis"):
+
+        tab1, tab2, tab3 = st.tabs(["By Column", "By Row", "Affected Data"])
+
+        # ---- Column-wise ----
+        with tab1:
+            col_df = outlier_summary.reset_index()
+            st.dataframe(col_df, use_container_width=True)
+
+        # ---- Row-wise ----
+        with tab2:
+            row_df = row_counts[row_counts > 0].reset_index()
+            row_df.columns = ["Row Index", "Outlier Count"]
+            st.dataframe(row_df, use_container_width=True)
+
+        # ---- Affected rows ----
+        with tab3:
+            affected_data = df[row_counts > 0]
+            st.dataframe(affected_data, use_container_width=True)
+
+    # ---------------- ACTION (SAFE REMOVAL) ----------------
+    st.markdown("### 🧹 Action")
+
+    # 🔥 Because of session_state, this button is no longer nested!
+    if st.button("🗑️ Remove Outlier Rows Safely"):
+
+        # Apply SAFE removal using tolerance
+        final_results = run_cleaning_pipeline(
+            df,
+            outlier_tolerance=2,
+            apply_removal=True
+        )
+
+        final_df = final_results["cleaned_df"]
+
+        removed = len(df) - len(final_df)
+
+        st.success(f"✅ Removed {removed} rows safely (tolerance-based)")
+
+        # Safety warning
+        if removed > 0.5 * len(df):
+            st.warning("⚠️ More than 50% data removed — consider adjusting tolerance.")
+
+        # Shows a safe preview of the top 10 rows
+        st.subheader("📊 Cleaned Data Preview")
+        st.dataframe(final_df.head(10), use_container_width=True)
+
+        # ---------------- NEW DOWNLOAD BUTTON ----------------
+        st.markdown("### 📥 Export")
+        
+        # Converts the FULL dataframe to CSV format
+        csv_data = final_df.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+            label="⬇️ Download Full Cleaned Dataset",
+            data=csv_data,
+            file_name="cleaned_dox_dataset.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+       
+st.divider()
+
 # ---------------- BLOCK 8 — COLUMN INFORMATION ----------------
 st.header("🗂️ Column Information")
 
@@ -108,32 +225,10 @@ col_info = pd.DataFrame({
 st.dataframe(col_info, use_container_width=True)
 st.divider()
 
-# ---------------- BLOCK 9 — MISSING VALUES ----------------
-st.header("🚨 Missing Values Analysis")
-
-total_missing = missing_counts.sum()
-
-if total_missing == 0:
-    st.success("✅ No missing values found!")
-else:
-    st.warning(f"⚠️ Total missing values: {total_missing}")
-
-    missing_df = pd.DataFrame({
-        "Column": missing_counts[missing_counts > 0].index,
-        "Missing Count": missing_counts[missing_counts > 0].values,
-        "Missing %": (missing_counts[missing_counts > 0].values / len(df) * 100).round(2)
-    })
-
-    st.dataframe(missing_df, use_container_width=True)
-
-st.divider()
-
 # ---------------- BLOCK 10 — STATISTICAL SUMMARY ----------------
 st.header("📈 Statistical Summary")
 
-if len(numeric_cols) == 0:
-    st.info("No numeric columns found.")
-else:
+if len(numeric_cols) > 0:
     st.dataframe(df[numeric_cols].describe().round(2), use_container_width=True)
 
 st.divider()
@@ -141,9 +236,7 @@ st.divider()
 # ---------------- BLOCK 11 — OUTLIER DETECTION ----------------
 st.header("🔍 Outlier Detection — IQR Method")
 
-if len(numeric_cols) == 0:
-    st.info("No numeric columns available.")
-else:
+if len(numeric_cols) > 0:
     outlier_col = st.selectbox("Select column:", numeric_cols)
 
     col_data = df[outlier_col].dropna()
@@ -158,7 +251,6 @@ else:
     outliers = col_data[(col_data < lower) | (col_data > upper)]
 
     st.metric("Outliers Found", len(outliers))
-    st.write(f"Lower: {round(lower,2)} | Upper: {round(upper,2)}")
 
     fig, ax = plt.subplots()
     ax.boxplot(col_data, vert=False)
@@ -167,73 +259,53 @@ else:
 
 st.divider()
 
-# ---------------- BLOCK 12 — CORRELATION HEATMAP (FINAL FIXED) ----------------
+# ---------------- BLOCK 12 — CORRELATION HEATMAP ----------------
 st.header("🔥 Correlation Heatmap")
 
-if len(numeric_cols) < 2:
-    st.info("Need at least 2 numeric columns.")
-else:
+if len(numeric_cols) >= 2:
     corr = df[numeric_cols].corr().round(2)
 
-    # Controls
-    show_annot = st.checkbox("Show correlation values", value=True)
     threshold = st.slider("Correlation strength filter:", 0.0, 1.0, 0.5)
 
-    # Dynamic sizing based on number of columns
-    size = len(corr.columns)
-    fig_size = max(6, size * 0.6)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax)
 
-    fig, ax = plt.subplots(figsize=(fig_size, fig_size))
-
-    # Adjust font size dynamically
-    font_size = max(6, 12 - size * 0.3)
-
-    sns.heatmap(
-        corr,
-        annot=show_annot,
-        fmt=".2f",
-        cmap="coolwarm",
-        center=0,
-        linewidths=0.5,
-        cbar=True,
-        annot_kws={"size": font_size},
-        ax=ax
-    )
-
-    ax.set_title("Correlation Matrix", fontsize=14)
     plt.xticks(rotation=45, ha="right")
     plt.yticks(rotation=0)
 
+    plt.tight_layout()
     st.pyplot(fig)
     plt.close()
-    
 
-    # ---------------- TOP CORRELATIONS ----------------
+    # 🔥 STRONG CORRELATION TABLE
     st.subheader("🔝 Strong Correlations")
 
-    corr_pairs = (
-        corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+    mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
+
+    strong_corr = (
+        corr.where(mask)
         .stack()
         .reset_index()
     )
 
-    corr_pairs.columns = ["Column A", "Column B", "Correlation"]
+    strong_corr.columns = ["Column A", "Column B", "Correlation"]
 
-    strong_corr = corr_pairs[abs(corr_pairs["Correlation"]) >= threshold]
+    strong_corr = strong_corr[
+        strong_corr["Correlation"].abs() >= threshold
+    ].sort_values(by="Correlation", key=abs, ascending=False)
 
     if strong_corr.empty:
-        st.info("No strong correlations found.")
+        st.warning("⚠️ No strong correlations found. Try lowering threshold.")
     else:
-        strong_corr = strong_corr.sort_values(by="Correlation", key=abs, ascending=False)
         st.dataframe(strong_corr, use_container_width=True)
 
 st.divider()
+
 # ---------------- BLOCK 13 — HISTOGRAM ----------------
 st.header("📊 Histogram")
 
 if len(numeric_cols) > 0:
     col = st.selectbox("Select column:", numeric_cols, key="hist")
-
     fig, ax = plt.subplots()
     ax.hist(df[col].dropna(), bins=30)
     st.pyplot(fig)
@@ -241,33 +313,37 @@ if len(numeric_cols) > 0:
 
 st.divider()
 
-# ---------------- BLOCK 14 — BAR CHART (FIXED) ----------------
+# ---------------- BLOCK 14 — BAR CHART (FINAL FIX) ----------------
 st.header("🏷️ Bar Chart")
 
-all_cols = df.columns.tolist()
-bar_col = st.selectbox("Select column for bar chart:", all_cols)
+bar_col = st.selectbox("Select column for bar chart:", df.columns)
 
 data = df[bar_col].dropna()
 
 if pd.api.types.is_numeric_dtype(data):
-    bins = st.slider("Select number of bins:", 5, 50, 10)
-    data = pd.cut(data, bins=bins)
-    value_counts = data.value_counts().sort_index()
+    bins = st.slider("Number of bins:", 5, 20, 10)
+    binned = pd.cut(data, bins=bins)
+    value_counts = binned.value_counts().sort_index()
+
+    labels = [str(i) for i in value_counts.index]
+
+    fig, ax = plt.subplots(figsize=(10, 5 + len(labels) * 0.3))
+    ax.bar(range(len(value_counts)), value_counts.values)
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+
 else:
-    value_counts = data.value_counts().head(10)
+    value_counts = data.value_counts().head(15)
 
-fig, ax = plt.subplots(figsize=(10, 4))
-fig.patch.set_facecolor("#0f0f1a")
-ax.set_facecolor("#0f0f1a")
+    fig, ax = plt.subplots(figsize=(10, 5 + len(value_counts) * 0.3))
+    ax.bar(value_counts.index.astype(str), value_counts.values)
 
-ax.bar(value_counts.index.astype(str), value_counts.values,
-       color="#7c3aed", edgecolor="#1e1b4b")
+    plt.xticks(rotation=45, ha="right")
 
-ax.set_title(f"Bar Chart of '{bar_col}'", color="white")
-ax.tick_params(colors="#94a3b8")
+ax.set_title(f"Bar Chart of '{bar_col}'")
 
-plt.xticks(rotation=45, ha="right")
-
+plt.tight_layout()
 st.pyplot(fig)
 plt.close()
 
@@ -276,7 +352,8 @@ st.divider()
 # ---------------- BLOCK 15 — FOOTER ----------------
 st.markdown(
     "<div style='text-align:center; color:gray;'>"
-    "🍇 DOX v2.0 | Built by <b>Risi Nigarish</b> 👑"
+    "🍇 DOX v2.1 | Built by <b>Risi Nigarish</b> 👑"
     "</div>",
     unsafe_allow_html=True
 )
+st.divider()
