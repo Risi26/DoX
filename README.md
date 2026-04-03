@@ -1,217 +1,166 @@
-# 🍇 DOX v2 — Data Exploration System
+🧠 DoX — Phase 3: AI-Powered Intelligence Upgrade
 
-> Unlock the power of your dataset — like a Devil Fruit ⚡
+"DoX started as a data analysis tool. Now we are upgrading it into an intelligent system that can learn from data and make predictions."
 
----
 
-## 🚀 Overview
+📌 Project Overview
+FieldDetailsProject NameDoX — Data Analytics + Intelligence Web AppPhase3 (Active)CaptainRisi NigarishTech StackPython · Pandas · NumPy · Scikit-learn · StreamlitGoalUpgrade DoX from a passive data viewer into an AI-powered decision system
 
-**DOX v2** is an interactive data analysis web application built using **Streamlit** that allows users to upload datasets and instantly explore, analyze, and visualize them.
+🏛️ What Was Built Before (v1 & v2)
+FeatureStatusCSV / Excel Upload✅ DoneBasic Data Cleaning (IQR)✅ DoneDataset Summary & Statistics✅ DoneBar Charts✅ DoneCorrelation Heatmap✅ DoneMachine Learning❌ Not YetPredictions❌ Not YetAI Decision-Making❌ Not Yet
 
-It is designed to:
+Phase 3 closes all the gaps above.
 
-* Reduce manual data inspection effort
-* Provide quick statistical insights
-* Detect patterns, outliers, and relationships
 
----
+🚀 Phase 3 — What We Are Building
+Phase 3 is divided into 4 blocks, each adding a new layer of intelligence to DoX.
 
-## 🎯 Key Features
+🔷 Block 1 — Advanced Data Cleaning ✅ COMPLETE
+Goal: Make the cleaning pipeline production-safe and intelligent.
+What's implemented:
 
-### 📂 Multi-Format Support
+Numerical column isolation (safe for all DataFrame types)
+NaN handling using median fill (outlier-resistant)
+Skewness detection per column with distribution labeling
+IQR-based outlier detection (no normality assumption)
+Row-wise outlier counting (not boolean masks)
+Tolerance-based row removal — only remove rows flagged across multiple columns
+Optional removal function — user controls deletion, not the algorithm
+Normalization: StandardScaler (default) or MinMaxScaler (optional)
 
-* Upload **CSV, Excel, or JSON** files
-* Automatic parsing and loading
+Core Functions:
+get_numeric_columns()       → Isolates numeric cols safely
+handle_missing_values()     → Median fill for NaNs
+compute_skewness_report()   → Skewness + distribution label per column
+detect_outliers_iqr()       → IQR bounds + outlier flags per column
+compute_row_outlier_counts()→ Integer count of flagged cols per row
+remove_outlier_rows()       → Tolerance-controlled row removal
+normalize_data()            → Standard or MinMax scaling
+run_cleaning_pipeline()     → Master pipeline (single call)
+Pipeline Flow:
+Raw DataFrame
+      ↓
+Extract Numeric Columns
+      ↓
+Handle NaN (Median Fill)
+      ↓
+Compute Skewness Report
+      ↓
+IQR Outlier Detection
+      ↓
+Row-wise Outlier Counts
+      ↓
+Tolerance-Based Removal (User-Controlled)
+      ↓
+Normalization
+      ↓
+Return: cleaned_df | outlier_summary | row_outlier_counts | skewness_report
 
----
+🔷 Block 2 — Feature Engineering 🔲 IN QUEUE
+Goal: Transform raw features into ML-ready inputs.
+Planned features:
 
-### 📊 Dataset Overview
+Create new derived features from existing columns
+Encode categorical variables (Label Encoding + One-Hot Encoding)
+Handle high-cardinality columns
+Drop low-variance features
+Feature importance preview (pre-model)
 
-* Total rows and columns
-* Numeric vs categorical breakdown
-* Missing value count
 
----
+🔷 Block 3 — Machine Learning 🔲 IN QUEUE
+Goal: Add predictive power to DoX.
+Planned models:
+ModelUse CaseLinear RegressionPredict continuous values (e.g., price, sales)Logistic RegressionPredict categories (e.g., yes/no, pass/fail)
+Planned features:
 
-### 🔍 Data Preview
+Auto-detect target column type (regression vs classification)
+Train/test split with configurable ratio
+Model training with real-time progress feedback
+Prediction output on new data
+Save trained model for reuse
 
-* Displays first 10 rows
-* Responsive full-width table
 
----
+🔷 Block 4 — Model Evaluation 🔲 IN QUEUE
+Goal: Measure how well DoX's models actually perform.
+Planned metrics:
+MetricModel TypeRMSE (Root Mean Squared Error)RegressionR² ScoreRegressionAccuracyClassificationConfusion MatrixClassificationPrecision / Recall / F1Classification
+Planned outputs:
 
-### 🗂️ Column Information
+Visual evaluation dashboard in Streamlit
+Metric comparison table
+Confusion matrix heatmap
+Prediction vs Actual chart (for regression)
 
-* Data types
-* Missing values (count & %)
-* Unique values
 
----
+🔁 Final System Flow (After Phase 3)
+Raw Data (CSV / Excel Upload)
+            ↓
+    Advanced Cleaning (Block 1)
+   [NaN fill · IQR · Normalization]
+            ↓
+   Feature Engineering (Block 2)
+   [Encoding · Derived Features]
+            ↓
+   Machine Learning Model (Block 3)
+   [Linear / Logistic Regression]
+            ↓
+    Model Evaluation (Block 4)
+   [RMSE · Accuracy · Confusion Matrix]
+            ↓
+   Predictions + Insights Output
 
-### 🚨 Missing Value Analysis
+📦 Tech Stack (Phase 3)
+LibraryPurposepandasData loading, manipulation, cleaningnumpyNumerical operations, outlier mathscipyZ-score computationscikit-learnML models, scalers, evaluation metricsstreamlitWeb app interfacematplotlibVisualizationsseabornHeatmaps, distribution plots
 
-* Detects missing data
-* Column-wise breakdown
+🗂️ File Structure (Recommended)
+DoX/
+│
+├── app.py                      ← Main Streamlit entry point
+│
+├── modules/
+│   ├── cleaning.py             ← Block 1: Advanced Cleaning Pipeline
+│   ├── feature_engineering.py  ← Block 2: Feature Engineering (WIP)
+│   ├── ml_models.py            ← Block 3: Machine Learning (WIP)
+│   └── evaluation.py           ← Block 4: Model Evaluation (WIP)
+│
+├── utils/
+│   └── helpers.py              ← Shared utility functions
+│
+├── data/
+│   └── sample_dataset.csv      ← Test datasets
+│
+├── requirements.txt            ← All dependencies
+└── README.md                   ← This file
 
----
+⚙️ Setup & Installation
+bash# 1. Clone the repository
+git clone https://github.com/your-repo/DoX.git
+cd DoX
 
-### 📈 Statistical Summary
-
-* Mean, Median, Std, Min, Max
-* Automatically computed for numeric columns
-
----
-
-### 🔍 Outlier Detection (IQR Method)
-
-* Identifies outliers using:
-
-  * Q1 (25th percentile)
-  * Q3 (75th percentile)
-  * IQR = Q3 − Q1
-* Highlights extreme values
-
----
-
-### 🔥 Correlation Heatmap
-
-* Displays relationships between numeric variables
-* Adaptive visualization for large datasets
-* Strong correlation filtering
-
----
-
-### 📊 Histogram
-
-* Distribution analysis
-* Shows mean and median trends
-
----
-
-### 🏷️ Smart Bar Chart
-
-* Works for both:
-
-  * Categorical data
-  * Numeric data (auto-binned)
-
----
-
-## 🛠️ Tech Stack
-
-* **Frontend/UI:** Streamlit
-* **Data Processing:** Pandas, NumPy
-* **Visualization:** Matplotlib, Seaborn
-
----
-
-## ⚙️ Installation & Setup
-
-### 1️⃣ Clone the repository
-
-```bash
-git clone https://github.com/<your-username>/dox.git
-cd dox
-```
-
----
-
-### 2️⃣ Create virtual environment
-
-```bash
-python -m venv venv
-```
-
----
-
-### 3️⃣ Activate environment
-
-#### Windows:
-
-```bash
-.\venv\Scripts\Activate.ps1
-```
-
----
-
-### 4️⃣ Install dependencies
-
-```bash
+# 2. Install dependencies
 pip install -r requirements.txt
-```
 
----
-
-### 5️⃣ Run the application
-
-```bash
+# 3. Run the app
 streamlit run app.py
-```
+requirements.txt
+pandas
+numpy
+scipy
+scikit-learn
+streamlit
+matplotlib
+seaborn
 
----
+🧠 What DoX Will Become
+After Phase 3, DoX will be able to:
+CapabilityStatusUpload and preview datasets✅ Already worksClean data intelligently✅ Block 1 completeEngineer ML-ready features🔲 Block 2 in queueTrain predictive models🔲 Block 3 in queueEvaluate model performance🔲 Block 4 in queuePredict future outcomes🔲 After Block 3Detect patterns automatically🔲 After Block 3Act like a mini AI analyst🔲 Phase 3 final goal
 
-## 📁 Project Structure
+👑 Project Leadership
+RoleNameCaptainRisi NigarishVice CaptainChatGPTFirst Division Commander / AI PartnerClaudeCrewGemini · Grok
 
-```
-dox/
-│── app.py
-│── requirements.txt
-│── README.md
-│── venv/
-```
+🏁 One Line Summary
 
----
+DoX = From Data Viewer → AI-Powered Decision System
 
-## 🧠 Key Concepts Used
 
-* Data Cleaning & Preprocessing
-* Exploratory Data Analysis (EDA)
-* IQR Outlier Detection
-* Correlation Analysis
-* Data Visualization
-
----
-
-## ⚠️ Known Limitations
-
-* Correlation heatmap requires at least **2 numeric columns**
-* Bar chart may be less meaningful for high-cardinality columns
-* Large datasets may impact performance
-
----
-
-## 🔮 Future Improvements (Phase 3)
-
-* Data cleaning tools (fill/drop missing values)
-* Export cleaned dataset
-* Advanced filtering & querying
-* Machine learning insights
-* Dashboard UI improvements
-
----
-
-## 👑 Author
-
-**Risi Nigarish**
-
-> "Building tools, not just projects."
-
----
-
-## ⭐ Support
-
-If you like this project:
-
-* ⭐ Star the repository
-* 🍴 Fork it
-* 📢 Share it
-
----
-
-## 📜 License
-
-This project is open-source and available under the MIT License.
-
----
-
-🔥 *DOX v2 is not just a project — it's your step into real data systems.*
+Phase 3 is live. The mission is in motion. 🚀
